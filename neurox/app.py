@@ -1,3 +1,6 @@
+import webbrowser
+
+import pyperclip
 import rumps
 
 from neurox.client import NewJobUpdate, StatusUpdate, JobDescription, NeuroxClient
@@ -7,7 +10,7 @@ from neurox.windows import TokenRequestWindow, CreateJobWindow
 
 
 class NeuroxApp(rumps.App):
-    UPDATE_DELAY = 2
+    UPDATE_DELAY = 10
     VERSION = '0.1'
     ABOUT = f'NeuroX (version {VERSION}) by Rebryk'
 
@@ -51,7 +54,7 @@ class NeuroxApp(rumps.App):
         self.client.kill(job_id)
 
     def render_job_item(self, job: JobDescription):
-        item = rumps.MenuItem(job.id)
+        item = rumps.MenuItem(job.id, lambda *args, **kwargs: pyperclip.copy(job.id))
         item.set_icon(get_icon(job.status), dimensions=(12, 12))
 
         item.add(rumps.MenuItem(f'Status: {job.status}'))
@@ -67,6 +70,10 @@ class NeuroxApp(rumps.App):
             item.add(rumps.MenuItem('Extshm: true'))
 
         item.add(rumps.separator)
+
+        if job.url:
+            item.add(rumps.MenuItem('Open link', lambda *args, **kwargs: webbrowser.open(job.url)))
+
         item.add(rumps.MenuItem('Kill', lambda *args, **kwargs: self.kill_job(job.id, *args, **kwargs)))
         return item
 
