@@ -4,14 +4,15 @@ from datetime import datetime
 import pyperclip
 import rumps
 
-from neurox.client import NewJobUpdate, StatusUpdate, JobDescription, NeuroxClient
+from neurox.client import JobDescription, NeuroxClient, StatusUpdate, NewJobUpdate
 from neurox.settings import load_settings, save_settings
 from neurox.utils import get_icon
 from neurox.windows import TokenRequestWindow, CreateJobWindow
 
 
 class NeuroxApp(rumps.App):
-    UPDATE_DELAY = 20
+    UPDATE_DELAY = 1
+    MAX_UPDATE_CYCLE_LEN = 30
     VERSION = '0.1'
     ABOUT = f'NeuroX (version {VERSION}) by Rebryk'
 
@@ -19,6 +20,12 @@ class NeuroxApp(rumps.App):
         super().__init__('Neurox', *args, icon=get_icon('icon'), **kwargs)
         self.client = None
         self.settings = None
+        self.iteration = 0
+        self.update_cycle_len = 1
+        self.initialize()
+
+    def set_active_mode(self):
+        self.update_cycle_len = 1
 
     def initialize(self):
         self.settings = load_settings(self)
@@ -50,9 +57,12 @@ class NeuroxApp(rumps.App):
             if exitcode != 0:
                 rumps.notification('Failed to submit the job', '', 'You may be using the wrong parameters')
 
+            self.set_active_mode()
+
     def kill_job(self, job_id: str, *args, **kwargs):
         del self.menu[job_id]
         self.client.kill(job_id)
+        self.set_active_mode()
 
     def render_job_item(self, job: JobDescription):
         item = rumps.MenuItem(job.id, lambda *args, **kwargs: pyperclip.copy(job.id))
@@ -97,10 +107,19 @@ class NeuroxApp(rumps.App):
 
     @rumps.timer(UPDATE_DELAY)
     def update(self, *args, **kwargs):
-        if self.client is None:
-            self.initialize()
+        self.iteration += 1
 
-        updates = self.client.update()
+        if self.iteration < self.update_cycle_len:
+            return
+
+        self.iteration = 0
+        self.update_cycle_len = min(2 * self.update_cycle_len, self.MAX_UPDATE_CYCLE_LEN)
+
+        try:
+            updates = self.client.update()
+        except:
+            # Ignore Internet connection problems
+            return
 
         for update in updates:
             if isinstance(update, StatusUpdate):
