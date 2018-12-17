@@ -1,4 +1,5 @@
 import webbrowser
+from datetime import datetime
 
 import pyperclip
 import rumps
@@ -10,7 +11,7 @@ from neurox.windows import TokenRequestWindow, CreateJobWindow
 
 
 class NeuroxApp(rumps.App):
-    UPDATE_DELAY = 10
+    UPDATE_DELAY = 20
     VERSION = '0.1'
     ABOUT = f'NeuroX (version {VERSION}) by Rebryk'
 
@@ -84,7 +85,10 @@ class NeuroxApp(rumps.App):
         self.menu.add(rumps.MenuItem(self.ABOUT))
         self.menu.add(rumps.separator)
 
-        for job in self.client.get_active_jobs():
+        # Active jobs sorted by created time
+        jobs = sorted(self.client.get_active_jobs(), key=lambda it: datetime.fromisoformat(it.history.created_at))
+
+        for job in jobs:
             self.menu.add(self.render_job_item(job))
 
         self.menu.add(rumps.separator)
