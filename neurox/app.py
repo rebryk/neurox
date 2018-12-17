@@ -1,5 +1,8 @@
+import subprocess
 import webbrowser
 from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
 
 import pyperclip
 import rumps
@@ -7,6 +10,7 @@ import rumps
 from neurox.client import JobDescription, NeuroxClient, StatusUpdate, NewJobUpdate
 from neurox.settings import load_settings, save_settings
 from neurox.utils import get_icon
+from neurox.utils import make_executable
 from neurox.windows import TokenRequestWindow, CreateJobWindow
 
 
@@ -18,6 +22,7 @@ class NeuroxApp(rumps.App):
 
     def __init__(self, *args, **kwargs):
         super().__init__('Neurox', *args, icon=get_icon('icon'), **kwargs)
+        self.tmp_path = Path(f'{self._application_support}/tmp')
         self.client = None
         self.settings = None
         self.iteration = 0
@@ -28,6 +33,14 @@ class NeuroxApp(rumps.App):
         self.update_cycle_len = 1
 
     def initialize(self):
+        # Create a directory to store temporary files with commands
+        if not self.tmp_path.exists():
+            self.tmp_path.mkdir()
+
+        # Clear the directory
+        for file in self.tmp_path.glob('*'):
+            file.unlink()
+
         self.settings = load_settings(self)
         token = self.settings['token']
 
@@ -59,6 +72,16 @@ class NeuroxApp(rumps.App):
 
             self.set_active_mode()
 
+    def connect_ssh(self, job: JobDescription):
+        command = self.client.connect_ssh(job)
+
+        path = str((self.tmp_path / f'{uuid4()}.sh').absolute())
+        with open(path, 'w') as f:
+            f.write(command)
+
+        make_executable(path)
+        subprocess.call(args=['open', path])
+
     def kill_job(self, job_id: str, *args, **kwargs):
         del self.menu[job_id]
         self.client.kill(job_id)
@@ -84,6 +107,9 @@ class NeuroxApp(rumps.App):
 
         if job.url:
             item.add(rumps.MenuItem('Open link', lambda *args, **kwargs: webbrowser.open(job.url)))
+
+        if job.ssh:
+            item.add(rumps.MenuItem('SSH', lambda *args, **kwargs: self.connect_ssh(job)))
 
         item.add(rumps.MenuItem('Kill', lambda *args, **kwargs: self.kill_job(job.id, *args, **kwargs)))
         return item

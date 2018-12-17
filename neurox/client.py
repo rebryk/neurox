@@ -1,6 +1,7 @@
 import subprocess
 from collections import namedtuple, OrderedDict
 
+from neuromation.cli.rc import ConfigFactory
 from neuromation.client.jobs import Job, JobDescription
 
 StatusUpdate = namedtuple('StatusUpdate', ['job_id', 'status'])
@@ -12,6 +13,12 @@ class NeuroxClient:
         self.url = url
         self.token = token
         self.job = Job(url, self.token)
+
+        config = ConfigFactory.load()
+        self.git_key = config.github_rsa_path
+        self.auth = config.auth
+        self.user_name = config.get_platform_user_name()
+
         self.jobs = self._job_list()
 
     def update(self) -> [StatusUpdate or NewJobUpdate]:
@@ -42,6 +49,11 @@ class NeuroxClient:
 
     def get_active_jobs(self) -> [JobDescription]:
         return list(filter(lambda it: it.status in ['pending', 'running'], self.jobs.values()))
+
+    def connect_ssh(self, job: JobDescription) -> str:
+        proxy_command = f'\"ProxyCommand=ssh -i {self.git_key} {self.user_name}@{job.jump_host()} nc {job.id} 22\"'
+        command = f'ssh -o {proxy_command} -i {self.git_key} root@{job.id}'
+        return command
 
     @staticmethod
     def submit_raw(params: str):
