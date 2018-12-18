@@ -7,7 +7,7 @@ It allows you:
 * Activate python remote debugging.
 * Receive notifications, when job status changes.
 
-![NeuroX screenshot](https://habrastorage.org/webt/95/lt/xk/95ltxkmti8qofnjf_xp6ldqgrcq.png)
+![NeuroX screenshot](https://habrastorage.org/webt/i5/hq/y_/i5hqy_pltwfoxawwq4sqcssygty.png)
 
 ## Installation
 ```
