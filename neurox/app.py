@@ -1,4 +1,3 @@
-import subprocess
 import webbrowser
 from datetime import datetime
 from pathlib import Path
@@ -10,8 +9,7 @@ import rumps
 from neurox.client import JobDescription, NeuroxClient, StatusUpdate, NewJobUpdate
 from neurox.settings import load_settings, save_settings
 from neurox.utils import get_icon
-from neurox.utils import make_executable
-from neurox.windows import TokenRequestWindow, CreateJobWindow
+from neurox.windows import TokenRequestWindow, CreateJobWindow, LocalPortWindow
 
 
 class NeuroxApp(rumps.App):
@@ -73,14 +71,25 @@ class NeuroxApp(rumps.App):
             self.set_active_mode()
 
     def connect_ssh(self, job: JobDescription):
-        command = self.client.connect_ssh(job)
+        try:
+            tmp_file = str((self.tmp_path / f'{uuid4()}.sh').absolute())
+            self.client.connect_ssh(job.id, tmp_file)
+        except Exception as e:
+            rumps.notification('SSH connection error', '', str(e))
 
-        path = str((self.tmp_path / f'{uuid4()}.sh').absolute())
-        with open(path, 'w') as f:
-            f.write(command)
+    def remote_debug(self, job: JobDescription):
+        try:
+            response = LocalPortWindow().run()
 
-        make_executable(path)
-        subprocess.call(args=['open', path])
+            if response.clicked:
+                try:
+                    local_port = int(response.text)
+                except ValueError:
+                    raise ValueError(f'Bad local port: {response.text}')
+
+                self.client.remote_debug(job.id, local_port)
+        except Exception as e:
+            rumps.notification('Remote debug error', '', str(e))
 
     def kill_job(self, job_id: str, *args, **kwargs):
         del self.menu[job_id]
@@ -104,6 +113,9 @@ class NeuroxApp(rumps.App):
             item.add(rumps.MenuItem('Extshm: true'))
 
         item.add(rumps.separator)
+
+        if job.ssh:
+            item.add(rumps.MenuItem('Remote debug...', lambda *args, **kwargs: self.remote_debug(job)))
 
         if job.url:
             item.add(rumps.MenuItem('Open link', lambda *args, **kwargs: webbrowser.open(job.url)))
@@ -143,7 +155,7 @@ class NeuroxApp(rumps.App):
 
         try:
             updates = self.client.update()
-        except:
+        except Exception as e:
             # Ignore Internet connection problems
             return
 
