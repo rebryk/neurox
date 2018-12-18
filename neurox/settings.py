@@ -1,32 +1,39 @@
 import json
 
-import rumps
 
-SETTINGS_PATH = 'settings.json'
+class Settings:
+    DEFAULT_SETTINGS = {
+        'job_params': ''
+    }
 
-DEFAULT_SETTINGS = {
-    'url': 'https://platform.staging.neuromation.io/api/v1',
-    'job_params': '',
-    'token': None
-}
+    def __init__(self, path: str):
+        self.path = path
+        self.settings = dict()
+        self.settings.update(self.DEFAULT_SETTINGS)
 
+    def __getitem__(self, item):
+        return self.settings.get(item)
 
-def load_settings(app: rumps.App):
-    settings = dict()
-    settings.update(DEFAULT_SETTINGS)
+    def __setitem__(self, key, value):
+        self.settings[key] = value
 
-    try:
-        with app.open(SETTINGS_PATH) as file:
-            settings.update(json.load(file))
-    except:
-        pass
+    def load(self):
+        try:
+            with open(self.path) as file:
+                self.settings.update(json.load(file))
+        except Exception as e:
+            pass
 
-    return settings
+    def save(self):
+        try:
+            with open(self.path, 'w') as file:
+                json.dump(self.settings, file)
+        except Exception as e:
+            pass
 
+    def __enter__(self):
+        self.load()
+        return self
 
-def save_settings(app: rumps.App):
-    try:
-        with app.open(SETTINGS_PATH, 'w') as file:
-            json.dump(app.settings, file)
-    except Exception:
-        pass
+    def __exit__(self, *args):
+        self.save()
