@@ -5,7 +5,7 @@ from neurox.utils import get_icon
 
 class LocalPortWindow(rumps.Window):
     def __init__(self):
-        super().__init__(title='Enter', ok='Connect', cancel='Cancel', default_text='1489', dimensions=(300, 23))
+        super().__init__(title='Enter local port', ok='Connect', cancel='Cancel', default_text='1489', dimensions=(300, 23))
         self.icon = get_icon('icon')
 
 
