@@ -191,7 +191,7 @@ class NeuroxApp(rumps.App):
             item.add(rumps.MenuItem('Remote debug...', lambda _: self.remote_debug(job)))
 
         if job.url:
-            item.add(rumps.MenuItem('Open link', lambda _: webbrowser.open(job.url)))
+            item.add(rumps.MenuItem('Open link', lambda _: webbrowser.open(str(job.url))))
 
         if job.ssh:
             item.add(rumps.MenuItem('Connect SSH', lambda _: self.connect_ssh(job)))
