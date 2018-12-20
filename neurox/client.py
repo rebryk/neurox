@@ -1,5 +1,7 @@
 import asyncio
+import shlex
 import subprocess
+import sys
 from collections import namedtuple
 from functools import wraps
 from typing import List, Any, Callable
@@ -110,8 +112,9 @@ class NeuroxClient:
     @staticmethod
     def submit_raw(params: str):
         # TODO: use JobHandlerOperations instead of it
-        args = f'neuro job submit {params}'.split()
-        process = subprocess.Popen(args, stdout=subprocess.PIPE)
+        args = shlex.split(f'neuro job submit {params}')
+
+        process = subprocess.Popen(args, stdout=sys.stdout)
         process.communicate()
 
         if process.returncode != 0:
