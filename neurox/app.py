@@ -48,7 +48,6 @@ class NeuroxApp(rumps.App):
             with Settings(self.settings_path) as settings:
                 job_window_builder.default_text = settings['job_params']
                 response = job_window_builder.build().run()
-
                 settings['job_params'] = str(response.text)
 
                 if response.clicked:
@@ -66,15 +65,18 @@ class NeuroxApp(rumps.App):
 
     def remote_debug(self, job: JobDescription):
         try:
-            response = port_window_builder.build().run()
+            with Settings(self.settings_path) as settings:
+                port_window_builder.default_text = settings['port']
+                response = port_window_builder.build().run()
+                settings['port'] = str(response.text)
 
-            if response.clicked:
-                try:
-                    local_port = int(response.text)
-                except ValueError:
-                    raise ValueError(f'Bad local port: {response.text}')
+                if response.clicked:
+                    try:
+                        local_port = int(response.text)
+                    except ValueError:
+                        raise ValueError(f'Bad local port: {response.text}')
 
-                self.client.remote_debug(job.id, local_port)
+                    self.client.remote_debug(job.id, local_port)
         except Exception as e:
             rumps.notification('Remote debug error', '', str(e))
 
