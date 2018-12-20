@@ -31,11 +31,11 @@ class WindowBuilder:
         return window
 
 
-local_port_window_builder = WindowBuilder(title='Enter local port',
-                                          ok='Connect',
-                                          cancel='Cancel',
-                                          default_text='1489',
-                                          dimensions=(300, 23))
+port_window_builder = WindowBuilder(title='Enter local port',
+                                    ok='Connect',
+                                    cancel='Cancel',
+                                    default_text='1489',
+                                    dimensions=(300, 23))
 
 job_window_builder = WindowBuilder(message='Specify job parameters',
                                    title='Create job',

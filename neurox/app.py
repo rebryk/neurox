@@ -10,7 +10,7 @@ import rumps
 from neurox.client import JobDescription, StatusUpdate, NewJobUpdate, NeuroxClient
 from neurox.settings import Settings
 from neurox.utils import get_icon
-from neurox.windows import job_window_builder, local_port_window_builder
+from neurox.windows import job_window_builder, port_window_builder
 
 
 class NeuroxApp(rumps.App):
@@ -66,7 +66,7 @@ class NeuroxApp(rumps.App):
 
     def remote_debug(self, job: JobDescription):
         try:
-            response = local_port_window_builder.build().run()
+            response = port_window_builder.build().run()
 
             if response.clicked:
                 try:
