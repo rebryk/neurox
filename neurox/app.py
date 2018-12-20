@@ -10,7 +10,7 @@ import rumps
 from neurox.client import JobDescription, StatusUpdate, NewJobUpdate, NeuroxClient
 from neurox.settings import Settings
 from neurox.utils import get_icon
-from neurox.windows import CreateJobWindow, LocalPortWindow
+from neurox.windows import job_window_builder, local_port_window_builder
 
 
 class NeuroxApp(rumps.App):
@@ -46,7 +46,9 @@ class NeuroxApp(rumps.App):
     def create_job(self, *args):
         try:
             with Settings(self.settings_path) as settings:
-                response = CreateJobWindow(settings['job_params']).run()
+                job_window_builder.default_text = settings['job_params']
+                response = job_window_builder.build().run()
+
                 settings['job_params'] = str(response.text)
 
                 if response.clicked:
@@ -64,7 +66,7 @@ class NeuroxApp(rumps.App):
 
     def remote_debug(self, job: JobDescription):
         try:
-            response = LocalPortWindow().run()
+            response = local_port_window_builder.build().run()
 
             if response.clicked:
                 try:
