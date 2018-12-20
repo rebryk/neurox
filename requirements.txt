@@ -1,3 +1,5 @@
 rumps
 py2app
 neuromation
+aiofiles
+aiohttp
