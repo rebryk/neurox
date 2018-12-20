@@ -42,3 +42,12 @@ job_window_builder = WindowBuilder(message='Specify job parameters',
                                    ok='Submit',
                                    cancel='Cancel',
                                    dimensions=(300, 100))
+
+preset_name_window_builder = WindowBuilder(message='Enter preset name',
+                                           title='Preset settings',
+                                           cancel='Cancel',
+                                           dimensions=(300, 23))
+
+preset_params_window_builder = WindowBuilder(message='Enter job params',
+                                             title='Preset settings',
+                                             dimensions=(300, 100))

@@ -10,13 +10,16 @@ import rumps
 from neurox.client import JobDescription, StatusUpdate, NewJobUpdate, NeuroxClient
 from neurox.settings import Settings
 from neurox.utils import get_icon
-from neurox.windows import job_window_builder, port_window_builder
+from neurox.windows import job_window_builder
+from neurox.windows import port_window_builder
+from neurox.windows import preset_name_window_builder
+from neurox.windows import preset_params_window_builder
 
 
 class NeuroxApp(rumps.App):
     UPDATE_DELAY = 1
     MAX_UPDATE_CYCLE_LEN = 30
-    VERSION = '0.1'
+    VERSION = '0.2'
     ABOUT = f'NeuroX (version {VERSION}) by Rebryk'
 
     def __init__(self, *args, **kwargs):
@@ -88,6 +91,84 @@ class NeuroxApp(rumps.App):
         except Exception as e:
             rumps.notification('Failed to kill the job', '', str(e))
 
+    def create_preset(self, *args):
+        preset = {
+            'id': str(uuid4()),
+            'name': '',
+            'job_params': ''
+        }
+
+        while True:
+            preset_name_window_builder.default_text = preset['name']
+            preset_name_window_builder.ok = 'Next'
+            response = preset_name_window_builder.build().run()
+
+            if not response.clicked:
+                return
+
+            preset['name'] = response.text
+
+            preset_params_window_builder.default_text = preset['job_params']
+            preset_params_window_builder.ok = 'Create'
+            preset_params_window_builder.cancel = 'Prev'
+            response = preset_params_window_builder.build().run()
+
+            if response.clicked:
+                preset['job_params'] = response.text
+                self.update_preset(preset)
+                self.render_menu()
+                return
+
+    def submit_preset(self, preset: dict):
+        try:
+            self.client.submit_raw(preset['job_params'])
+            self.set_active_mode()
+        except Exception as e:
+            rumps.notification('Failed to create new job', '', str(e))
+
+    def update_preset(self, preset: dict, remove: bool = False):
+        with Settings(self.settings_path) as settings:
+            new_presets = []
+            is_found = False
+
+            for it in settings['presets']:
+                if it['id'] == preset['id']:
+                    is_found = True
+                    if not remove:
+                        new_presets.append(preset)
+                else:
+                    new_presets.append(it)
+
+            if not is_found and not remove:
+                new_presets.append(preset)
+
+            settings['presets'] = new_presets
+
+    def rename_preset(self, preset: dict):
+        preset_name_window_builder.default_text = preset['name']
+        preset_name_window_builder.ok = 'Save'
+        response = preset_name_window_builder.build().run()
+
+        if response.clicked:
+            preset['name'] = response.text
+            self.update_preset(preset)
+            self.render_menu()
+
+    def change_preset(self, preset: dict):
+        preset_params_window_builder.default_text = preset['job_params']
+        preset_params_window_builder.ok = 'Save'
+        preset_params_window_builder.cancel = 'Cancel'
+        response = preset_params_window_builder.build().run()
+
+        if response.clicked:
+            preset['job_params'] = response.text
+            self.update_preset(preset)
+            self.render_menu()
+
+    def remove_preset(self, preset: dict):
+        self.update_preset(preset, remove=True)
+        self.render_menu()
+
     def render_job_item(self, job: JobDescription):
         item = rumps.MenuItem(job.id, lambda *args, **kwargs: pyperclip.copy(job.id))
         item.set_icon(get_icon(job.status), dimensions=(12, 12))
@@ -118,6 +199,30 @@ class NeuroxApp(rumps.App):
         item.add(rumps.MenuItem('Kill', lambda _: self.kill_job(job)))
         return item
 
+    def render_preset_item(self, preset) -> rumps.MenuItem:
+        item = rumps.MenuItem(preset['name'])
+        item.add(rumps.MenuItem('Submit', lambda *args: self.submit_preset(preset)))
+        item.add(rumps.MenuItem('Rename...', lambda *args: self.rename_preset(preset)))
+        item.add(rumps.MenuItem('Change job...', lambda *args: self.change_preset(preset)))
+        item.add(rumps.MenuItem('Remove', lambda *args: self.remove_preset(preset)))
+        return item
+
+    def render_presets_item(self) -> rumps.MenuItem:
+        item = rumps.MenuItem('Presets')
+
+        with Settings(self.settings_path) as settings:
+            presets = settings['presets']
+
+        for preset in presets:
+            item.add(self.render_preset_item(preset))
+
+        if len(presets) == 0:
+            item.add(rumps.MenuItem('No presets'))
+
+        item.add(rumps.separator)
+        item.add(rumps.MenuItem('Create preset...', self.create_preset))
+        return item
+
     def render_menu(self):
         quit_button = self.menu.get('Quit')
         self.menu.clear()
@@ -136,6 +241,7 @@ class NeuroxApp(rumps.App):
 
         self.menu.add(rumps.separator)
         self.menu.add(rumps.MenuItem('Create job...', self.create_job))
+        self.menu.add(self.render_presets_item())
         self.menu.add(quit_button)
 
     @staticmethod

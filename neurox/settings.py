@@ -4,7 +4,8 @@ import json
 class Settings:
     DEFAULT_SETTINGS = {
         'job_params': '',
-        'port': ''
+        'port': '',
+        'presets': []
     }
 
     def __init__(self, path: str):
