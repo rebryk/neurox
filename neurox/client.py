@@ -9,12 +9,12 @@ from typing import List, Any, Callable
 from neuromation.cli.rc import ConfigFactory
 from neuromation.cli.ssh_utils import remote_debug
 from neuromation.clientv2 import ClientV2
-from neuromation.clientv2.jobs import JobDescription
+from neuromation.clientv2.jobs import JobDescription, JobStatus
 
 from neurox.ssh_utils import connect_ssh
 
-StatusUpdate = namedtuple('StatusUpdate', ['job_id', 'status'])
-NewJobUpdate = namedtuple('NewJobUpdate', ['job_id', 'status'])
+StatusUpdate = namedtuple('StatusUpdate', ['job_id', 'status', 'reason'])
+NewJobUpdate = namedtuple('NewJobUpdate', ['job_id', 'status', 'reason'])
 
 
 def sync_wait(future: Callable) -> Callable:
@@ -39,27 +39,33 @@ class NeuroxClient:
             return updates
 
         # update old job statuses
-        for job in self._jobs.values():
-            if job.id not in jobs:
-                raise RuntimeError(f'Job `{job.id}` is not presented in job history!')
+        for job_id, job in self._jobs.items():
+            if job_id not in jobs:
+                raise RuntimeError(f'Job `{job_id}` is not presented in job history!')
 
-            if job.status != jobs[job.id].status:
-                self._jobs[job.id] = jobs[job.id]
-                updates.append(StatusUpdate(job.id, jobs[job.id].status))
+            new_job = jobs[job_id]
+
+            if job.status != new_job.status:
+                self._jobs[job_id] = new_job
+                name = new_job.description if new_job.description else job_id
+                reason = new_job.history.reason if new_job.status == JobStatus.FAILED else None
+                updates.append(StatusUpdate(name, new_job.status, reason))
 
         # update new job statuses
-        for job in jobs.values():
-            if job.id in self._jobs:
+        for job_id, new_job in jobs.items():
+            if job_id in self._jobs:
                 continue
 
-            self._jobs[job.id] = job
-            updates.append(NewJobUpdate(job.id, job.status))
+            self._jobs[job_id] = new_job
+            name = new_job.description if new_job.description else job_id
+            reason = new_job.history.reason if new_job.status == JobStatus.FAILED else None
+            updates.append(NewJobUpdate(name, new_job.status, reason))
 
         return updates
 
     def get_active_jobs(self) -> List[JobDescription]:
         jobs = self._jobs.values() if self._jobs else []
-        return list(filter(lambda it: it.status in ['pending', 'running'], jobs))
+        return list(filter(lambda it: it.status in [JobStatus.PENDING, JobStatus.RUNNING], jobs))
 
     @staticmethod
     @sync_wait

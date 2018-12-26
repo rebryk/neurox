@@ -250,10 +250,12 @@ class NeuroxApp(rumps.App):
     def show_updates(updates: List[StatusUpdate or NewJobUpdate]):
         for update in updates:
             if isinstance(update, StatusUpdate):
-                rumps.notification('Job status has changed', update.job_id, f'New status: {update.status}')
+                reason = f' ({update.reason})' if update.reason else ''
+                rumps.notification('Job status has changed', update.job_id, f'New status: {update.status}{reason}')
 
             if isinstance(update, NewJobUpdate):
-                rumps.notification('New job is created', update.job_id, f'Status: {update.status}')
+                reason = f' ({update.reason})' if update.reason else ''
+                rumps.notification('New job is created', update.job_id, f'Status: {update.status}{reason}')
 
     @rumps.timer(UPDATE_DELAY)
     def update(self, timer: rumps.Timer):
