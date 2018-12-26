@@ -170,9 +170,11 @@ class NeuroxApp(rumps.App):
         self.render_menu()
 
     def render_job_item(self, job: JobDescription):
-        item = rumps.MenuItem(job.id, lambda *args, **kwargs: pyperclip.copy(job.id))
+        job_name = job.description if job.description else job.id
+        item = rumps.MenuItem(job_name, lambda *args, **kwargs: pyperclip.copy(job.id))
         item.set_icon(get_icon(job.status), dimensions=(12, 12))
 
+        item.add(rumps.MenuItem(f'Id: {job.id}'))
         item.add(rumps.MenuItem(f'Status: {job.status}'))
         item.add(rumps.MenuItem(f'Image: {job.image}'))
         item.add(rumps.MenuItem(f'CPU: {job.resources.cpu}'))
