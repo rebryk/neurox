@@ -10,6 +10,7 @@ import rumps
 from neurox.client import JobDescription, StatusUpdate, NewJobUpdate, NeuroxClient
 from neurox.settings import Settings
 from neurox.utils import get_icon
+from neurox.windows import job_description_window_builder
 from neurox.windows import job_window_builder
 from neurox.windows import port_window_builder
 from neurox.windows import preset_name_window_builder
@@ -120,11 +121,16 @@ class NeuroxApp(rumps.App):
                 return
 
     def submit_preset(self, preset: dict):
-        try:
-            self.client.submit_raw(preset['job_params'])
-            self.set_active_mode()
-        except Exception as e:
-            rumps.notification('Failed to create new job', '', str(e))
+        job_description_window_builder.default_text = preset['name']
+        response = job_description_window_builder.build().run()
+
+        if response.clicked:
+            try:
+                params = f'-d \"{response.text}\" ' + preset['job_params']
+                self.client.submit_raw(params)
+                self.set_active_mode()
+            except Exception as e:
+                rumps.notification('Failed to create new job', '', str(e))
 
     def update_preset(self, preset: dict, remove: bool = False):
         with Settings(self.settings_path) as settings:
@@ -203,7 +209,7 @@ class NeuroxApp(rumps.App):
 
     def render_preset_item(self, preset) -> rumps.MenuItem:
         item = rumps.MenuItem(preset['name'])
-        item.add(rumps.MenuItem('Submit', lambda *args: self.submit_preset(preset)))
+        item.add(rumps.MenuItem('Submit...', lambda *args: self.submit_preset(preset)))
         item.add(rumps.MenuItem('Rename...', lambda *args: self.rename_preset(preset)))
         item.add(rumps.MenuItem('Change job...', lambda *args: self.change_preset(preset)))
         item.add(rumps.MenuItem('Remove', lambda *args: self.remove_preset(preset)))
