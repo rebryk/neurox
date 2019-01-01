@@ -1,5 +1,5 @@
 # NeuroX
-![version 0.3](https://img.shields.io/badge/version-0.2-brightgreen.svg)
+![version 0.3](https://img.shields.io/badge/version-0.3-brightgreen.svg)
 
 Simple job manager for Neuromation platform.
 
