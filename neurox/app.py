@@ -20,7 +20,7 @@ from neurox.windows import preset_params_window_builder
 class NeuroxApp(rumps.App):
     UPDATE_DELAY = 1
     MAX_UPDATE_CYCLE_LEN = 30
-    VERSION = '0.2'
+    VERSION = '0.3'
     ABOUT = f'NeuroX (version {VERSION}) by Rebryk'
 
     def __init__(self, *args, **kwargs):
