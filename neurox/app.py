@@ -10,11 +10,7 @@ import rumps
 from neurox.client import JobDescription, StatusUpdate, NewJobUpdate, NeuroxClient
 from neurox.settings import Settings
 from neurox.utils import get_icon
-from neurox.windows import job_description_window_builder
-from neurox.windows import job_window_builder
-from neurox.windows import port_window_builder
-from neurox.windows import preset_name_window_builder
-from neurox.windows import preset_params_window_builder
+from neurox.windows import Windows
 
 
 class NeuroxApp(rumps.App):
@@ -50,8 +46,7 @@ class NeuroxApp(rumps.App):
     def create_job(self, *args):
         try:
             with Settings(self.settings_path) as settings:
-                job_window_builder.default_text = settings['job_params']
-                response = job_window_builder.build().run()
+                response = Windows.create_job(settings['job_params'])
                 settings['job_params'] = str(response.text)
 
                 if response.clicked:
@@ -70,8 +65,7 @@ class NeuroxApp(rumps.App):
     def remote_debug(self, job: JobDescription):
         try:
             with Settings(self.settings_path) as settings:
-                port_window_builder.default_text = settings['port']
-                response = port_window_builder.build().run()
+                response = Windows.port(settings['port'])
                 settings['port'] = str(response.text)
 
                 if response.clicked:
@@ -85,12 +79,15 @@ class NeuroxApp(rumps.App):
             rumps.notification('Remote debug error', '', str(e))
 
     def kill_job(self, job: JobDescription):
-        try:
-            self.client.job_kill(job.id)
-            del self.menu[job.id]
-            self.set_active_mode()
-        except Exception as e:
-            rumps.notification('Failed to kill the job', '', str(e))
+        response = Windows.kill_job()
+
+        if response.clicked:
+            try:
+                self.client.job_kill(job.id)
+                del self.menu[job.id]
+                self.set_active_mode()
+            except Exception as e:
+                rumps.notification('Failed to kill the job', '', str(e))
 
     def create_preset(self, *args):
         preset = {
@@ -100,19 +97,14 @@ class NeuroxApp(rumps.App):
         }
 
         while True:
-            preset_name_window_builder.default_text = preset['name']
-            preset_name_window_builder.ok = 'Next'
-            response = preset_name_window_builder.build().run()
+            response = Windows.preset_name(preset['name'], 'Next')
 
             if not response.clicked:
                 return
 
             preset['name'] = response.text
 
-            preset_params_window_builder.default_text = preset['job_params']
-            preset_params_window_builder.ok = 'Create'
-            preset_params_window_builder.cancel = 'Prev'
-            response = preset_params_window_builder.build().run()
+            response = Windows.preset_params(preset['job_params'], 'Create', 'Prev')
 
             if response.clicked:
                 preset['job_params'] = response.text
@@ -121,8 +113,7 @@ class NeuroxApp(rumps.App):
                 return
 
     def submit_preset(self, preset: dict):
-        job_description_window_builder.default_text = preset['name']
-        response = job_description_window_builder.build().run()
+        response = Windows.job_description(preset['name'])
 
         if response.clicked:
             try:
@@ -151,9 +142,7 @@ class NeuroxApp(rumps.App):
             settings['presets'] = new_presets
 
     def rename_preset(self, preset: dict):
-        preset_name_window_builder.default_text = preset['name']
-        preset_name_window_builder.ok = 'Save'
-        response = preset_name_window_builder.build().run()
+        response = Windows.preset_name(preset['name'], 'Save')
 
         if response.clicked:
             preset['name'] = response.text
@@ -161,10 +150,7 @@ class NeuroxApp(rumps.App):
             self.render_menu()
 
     def change_preset(self, preset: dict):
-        preset_params_window_builder.default_text = preset['job_params']
-        preset_params_window_builder.ok = 'Save'
-        preset_params_window_builder.cancel = 'Cancel'
-        response = preset_params_window_builder.build().run()
+        response = Windows.preset_params(preset['job_params'], 'Save', 'Cancel')
 
         if response.clicked:
             preset['job_params'] = response.text
@@ -172,8 +158,11 @@ class NeuroxApp(rumps.App):
             self.render_menu()
 
     def remove_preset(self, preset: dict):
-        self.update_preset(preset, remove=True)
-        self.render_menu()
+        response = Windows.remove_preset()
+
+        if response.clicked:
+            self.update_preset(preset, remove=True)
+            self.render_menu()
 
     def render_job_item(self, job: JobDescription):
         job_name = job.description if job.description else job.id
@@ -209,10 +198,10 @@ class NeuroxApp(rumps.App):
 
     def render_preset_item(self, preset) -> rumps.MenuItem:
         item = rumps.MenuItem(preset['name'])
-        item.add(rumps.MenuItem('Submit...', lambda *args: self.submit_preset(preset)))
-        item.add(rumps.MenuItem('Rename...', lambda *args: self.rename_preset(preset)))
-        item.add(rumps.MenuItem('Change job...', lambda *args: self.change_preset(preset)))
-        item.add(rumps.MenuItem('Remove', lambda *args: self.remove_preset(preset)))
+        item.add(rumps.MenuItem('Submit...', lambda _: self.submit_preset(preset)))
+        item.add(rumps.MenuItem('Rename...', lambda _: self.rename_preset(preset)))
+        item.add(rumps.MenuItem('Change job...', lambda _: self.change_preset(preset)))
+        item.add(rumps.MenuItem('Remove', lambda _: self.remove_preset(preset)))
         return item
 
     def render_presets_item(self) -> rumps.MenuItem:
