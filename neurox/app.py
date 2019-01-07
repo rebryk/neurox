@@ -18,6 +18,7 @@ class NeuroxApp(rumps.App):
     MAX_UPDATE_CYCLE_LEN = 30
     VERSION = '0.3'
     ABOUT = f'NeuroX (version {VERSION}) by Rebryk'
+    GITHUB_ULR = 'https://github.com/rebryk/neurox'
 
     def __init__(self, *args, **kwargs):
         super().__init__('Neurox', *args, icon=get_icon('icon'), **kwargs)
@@ -224,7 +225,7 @@ class NeuroxApp(rumps.App):
         quit_button = self.menu.get('Quit')
         self.menu.clear()
 
-        self.menu.add(rumps.MenuItem(self.ABOUT))
+        self.menu.add(rumps.MenuItem(self.ABOUT, lambda _: webbrowser.open(self.GITHUB_ULR)))
         self.menu.add(rumps.separator)
 
         # Active jobs sorted by created time
