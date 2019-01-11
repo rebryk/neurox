@@ -1,12 +1,15 @@
 import asyncio
 import shlex
 import subprocess
-import sys
 from collections import namedtuple
 from functools import wraps
 from typing import List, Any, Callable
 
-from neuromation.cli.rc import ConfigFactory
+import aiofiles as aiof
+import aiohttp
+from neuromation.cli.commands import dispatch
+from neuromation.cli.defaults import DEFAULTS
+from neuromation.cli.main import neuro
 from neuromation.cli.ssh_utils import remote_debug
 from neuromation.clientv2 import ClientV2
 from neuromation.clientv2.jobs import JobDescription, JobStatus
@@ -29,6 +32,22 @@ def sync_wait(future: Callable) -> Callable:
 class NeuroxClient:
     def __init__(self):
         self._jobs = None
+        self._username = None
+        self._auth = None
+        self._url = None
+        self._rsa_path = None
+
+    def update_username(self, username: str):
+        self._username = username
+
+    def update_auth(self, auth: str):
+        self._auth = auth
+
+    def update_url(self, url: str):
+        self._url = url
+
+    def update_rsa_path(self, rsa_path: str):
+        self._rsa_path = rsa_path
 
     def update(self) -> List[StatusUpdate or NewJobUpdate]:
         updates = []
@@ -67,61 +86,84 @@ class NeuroxClient:
         jobs = self._jobs.values() if self._jobs else []
         return list(filter(lambda it: it.status in [JobStatus.PENDING, JobStatus.RUNNING], jobs))
 
-    @staticmethod
     @sync_wait
-    async def job_kill(job_id: str):
-        config = ConfigFactory.load()
+    async def job_kill(self, job_id: str):
+        if not self._url:
+            raise ValueError('Specify neuromation API URL!')
 
-        if not config.url:
-            raise ValueError('Specify API URL! See for more info `neuro config`.')
+        if not self._auth:
+            raise ValueError('Specify neuromation API token!')
 
-        if not config.auth:
-            raise ValueError('Specify API token! See for more info `neuro config`.')
-
-        async with ClientV2(config.url, config.auth) as api:
+        async with ClientV2(self._url, self._auth) as api:
             await api.jobs.kill(job_id)
 
-    @staticmethod
     @sync_wait
-    async def job_list() -> List[JobDescription]:
-        config = ConfigFactory.load()
+    async def job_list(self) -> List[JobDescription]:
+        if not self._url:
+            raise ValueError('Specify neuromation API URL!')
 
-        if not config.url:
-            raise ValueError('Specify API URL! See for more info `neuro config`.')
+        if not self._auth:
+            raise ValueError('Specify neuromation API token!')
 
-        if not config.auth:
-            raise ValueError('Specify API token! See for more info `neuro config`.')
-
-        async with ClientV2(config.url, config.auth) as api:
+        async with ClientV2(self._url, self._auth) as api:
             return await api.jobs.list()
 
-    @staticmethod
     @sync_wait
-    async def connect_ssh(job_id: str, tmp_file: str):
-        config = ConfigFactory.load()
-        rsa_path = config.github_rsa_path
-        username = config.get_platform_user_name()
+    async def monitor(self, job_id: str, tmp_file: str) -> Any:
+        if not self._url:
+            raise ValueError('Specify neuromation API URL!')
 
-        async with ClientV2(config.url, config.auth) as client:
-            await connect_ssh(client, username, job_id, rsa_path, 'root', rsa_path, tmp_file)
+        if not self._auth:
+            raise ValueError('Specify neuromation API token!')
 
-    @staticmethod
+        timeout = aiohttp.ClientTimeout(None, None, 1, 5)
+
+        async with ClientV2(self._url, self._auth, timeout=timeout) as api:
+            try:
+                async with aiof.open(tmp_file, 'w') as file:
+                    try:
+                        async for data in api.jobs.monitor(job_id):
+                            await file.write(data.decode('utf-8'))
+                    except:
+                        # Nothing to read.
+                        pass
+
+                proc = await asyncio.create_subprocess_exec('open', tmp_file)
+                await proc.wait()
+            except subprocess.CalledProcessError as e:
+                pass
+
     @sync_wait
-    async def remote_debug(job_id: str, local_port: int):
-        config = ConfigFactory.load()
-        rsa_path = config.github_rsa_path
-        username = config.get_platform_user_name()
+    async def connect_ssh(self, job_id: str, tmp_file: str):
+        if not self._username:
+            raise ValueError('Specify neuromation username!')
 
-        async with ClientV2(config.url, config.auth) as client:
-            await remote_debug(client, username, job_id, rsa_path, local_port)
+        async with ClientV2(self._url, self._auth) as client:
+            await connect_ssh(client, self._username, job_id, self._rsa_path, 'root', self._rsa_path, tmp_file)
 
-    @staticmethod
-    def submit_raw(params: str):
-        # TODO: use JobHandlerOperations instead of it
-        args = shlex.split(f'neuro job submit {params}')
+    @sync_wait
+    async def remote_debug(self, job_id: str, local_port: int):
+        if not self._username:
+            raise ValueError('Specify neuromation username!')
 
-        process = subprocess.Popen(args, stdout=sys.stdout)
-        process.communicate()
+        async with ClientV2(self._url, self._auth) as client:
+            await remote_debug(client, self._username, job_id, self._rsa_path, local_port)
 
-        if process.returncode != 0:
-            raise ValueError('You may be using the wrong parameters!')
+    def submit_raw(self, params: str):
+        args = shlex.split(f'job submit {params}')
+        format_spec = DEFAULTS.copy()
+
+        if self._username:
+            format_spec['username'] = self._username
+
+        if self._url:
+            format_spec['api_url'] = self._url
+
+        # Save initial event loop, because `dispatch` changes it.
+        loop = asyncio.get_event_loop()
+
+        try:
+            dispatch(target=neuro, tail=args, format_spec=format_spec, token=self._auth)
+        finally:
+            # Restore initial event loop, because `dispatch` changes it.
+            asyncio.set_event_loop(loop)

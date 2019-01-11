@@ -23,10 +23,10 @@ modulegraph==0.17
 multidict==4.5.2
 neuromation==0.1.6
 pefile==2018.8.8
-py2app==0.18
 pyasn1==0.4.4
 pycparser==2.19
 pycryptodome==3.7.2
+PyInstaller==3.4
 pyobjc==5.1.1
 pyobjc-core==5.1.1
 pyobjc-framework-Accounts==5.1.1

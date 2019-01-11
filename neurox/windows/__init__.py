@@ -84,5 +84,45 @@ class Windows:
                      ok='Yes',
                      cancel='Cancel')
 
+    @staticmethod
+    @autorun
+    def auth(auth: str) -> Window:
+        return Window(title='Settings',
+                      message='Specify neuromation API token',
+                      default_text=auth,
+                      ok='Save',
+                      cancel='Cancel',
+                      dimensions=(300, 70))
+
+    @staticmethod
+    @autorun
+    def username(username: str) -> Window:
+        return Window(title='Settings',
+                      message='Specify neuromation username',
+                      default_text=username,
+                      ok='Save',
+                      cancel='Cancel',
+                      dimensions=(300, 23))
+
+    @staticmethod
+    @autorun
+    def url(url: str) -> Window:
+        return Window(title='Settings',
+                      message='Specify neuromation API URL',
+                      default_text=url,
+                      ok='Save',
+                      cancel='Cancel',
+                      dimensions=(300, 23))
+
+    @staticmethod
+    @autorun
+    def rsa_path(rsa_path: str) -> Window:
+        return Window(title='Settings',
+                      message='Specify RSA key path',
+                      default_text=rsa_path,
+                      ok='Save',
+                      cancel='Cancel',
+                      dimensions=(300, 23))
+
 
 __all__ = ['Windows']

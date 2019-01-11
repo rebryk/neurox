@@ -22,7 +22,7 @@ async def _connect_ssh(
     # We shall make an attempt to connect only in case it has SSH
     ssh_hostname = job_status.jump_host()
     if not ssh_hostname:
-        raise RuntimeError("Job has no SSH server enabled")
+        raise RuntimeError('Job has no SSH server enabled')
 
     proxy_command = f'\"ProxyCommand=ssh -i {jump_host_key} {username}@{ssh_hostname} nc {job_status.id} 22\"'
     command = f'ssh -o {proxy_command} -i {container_key} {container_user}@{job_status.id}'
@@ -51,5 +51,5 @@ async def connect_ssh(
     try:
         job_status = await client.jobs.status(job_id)
     except aiohttp.ClientError as e:
-        raise ValueError(f"Job not found. Job Id = {job_id}") from e
+        raise ValueError(f'Job not found. Job Id = {job_id}') from e
     await _connect_ssh(username, job_status, jump_host_key, container_user, container_key, tmp_file)

@@ -1,11 +1,12 @@
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Callable
 from uuid import uuid4
 
 import pyperclip
 import rumps
+from neuromation.client import AuthenticationError
 
 from neurox.client import JobDescription, StatusUpdate, NewJobUpdate, NeuroxClient
 from neurox.settings import Settings
@@ -16,7 +17,7 @@ from neurox.windows import Windows
 class NeuroxApp(rumps.App):
     UPDATE_DELAY = 1
     MAX_UPDATE_CYCLE_LEN = 30
-    VERSION = '0.3'
+    VERSION = '1.0'
     ABOUT = f'NeuroX (version {VERSION}) by Rebryk'
     GITHUB_ULR = 'https://github.com/rebryk/neurox'
 
@@ -44,6 +45,21 @@ class NeuroxApp(rumps.App):
         for file in self.tmp_path.glob('*'):
             file.unlink()
 
+        with Settings(self.settings_path) as settings:
+            if not settings['username']:
+                settings['username'] = Windows.username(settings['username']).text
+
+            if not settings['auth']:
+                settings['auth'] = Windows.auth(settings['auth']).text
+
+            if not settings['url']:
+                settings['url'] = Windows.url(settings['url']).text
+
+            if not settings['rsa_path']:
+                settings['rsa_path'] = Windows.rsa_path(settings['rsa_path']).text
+
+        self.update_client()
+
     def create_job(self, *args):
         try:
             with Settings(self.settings_path) as settings:
@@ -58,10 +74,17 @@ class NeuroxApp(rumps.App):
 
     def connect_ssh(self, job: JobDescription):
         try:
-            tmp_file = str((self.tmp_path / f'{uuid4()}.sh').absolute())
+            tmp_file = str((self.tmp_path / f'{job.id}.sh').absolute())
             self.client.connect_ssh(job.id, tmp_file)
         except Exception as e:
             rumps.notification('SSH connection error', '', str(e))
+
+    def monitor(self, job: JobDescription):
+        try:
+            tmp_file = str((self.tmp_path / f'{job.id}.txt').absolute())
+            self.client.monitor(job.id, tmp_file)
+        except Exception as e:
+            rumps.notification('Monitor error', '', str(e))
 
     def remote_debug(self, job: JobDescription):
         try:
@@ -118,7 +141,7 @@ class NeuroxApp(rumps.App):
 
         if response.clicked:
             try:
-                params = f'-d \"{response.text}\" ' + preset['job_params']
+                params = f'-d \'{response.text}\' ' + preset['job_params']
                 self.client.submit_raw(params)
                 self.set_active_mode()
             except Exception as e:
@@ -165,6 +188,22 @@ class NeuroxApp(rumps.App):
             self.update_preset(preset, remove=True)
             self.render_menu()
 
+    def update_client(self):
+        with Settings(self.settings_path) as settings:
+            self.client.update_username(settings['username'])
+            self.client.update_auth(settings['auth'])
+            self.client.update_url(settings['url'])
+            self.client.update_rsa_path(settings['rsa_path'])
+
+    def settings(self, window: Callable, field: str):
+        with Settings(self.settings_path) as settings:
+            response = window(settings[field])
+
+            if response.clicked:
+                settings[field] = response.text
+
+        self.update_client()
+
     def render_job_item(self, job: JobDescription):
         job_name = job.description if job.description else job.id
         item = rumps.MenuItem(job_name, lambda *args, **kwargs: pyperclip.copy(job.id))
@@ -184,6 +223,8 @@ class NeuroxApp(rumps.App):
             item.add(rumps.MenuItem('Extshm: true'))
 
         item.add(rumps.separator)
+
+        item.add(rumps.MenuItem('Monitor', lambda _: self.monitor(job)))
 
         if job.ssh:
             item.add(rumps.MenuItem('Remote debug...', lambda _: self.remote_debug(job)))
@@ -221,11 +262,20 @@ class NeuroxApp(rumps.App):
         item.add(rumps.MenuItem('Create preset...', self.create_preset))
         return item
 
+    def render_settings_item(self) -> rumps.MenuItem:
+        item = rumps.MenuItem('Settings')
+        item.add(rumps.MenuItem('Username...', lambda _: self.settings(Windows.username, 'username')))
+        item.add(rumps.MenuItem('Token...', lambda _: self.settings(Windows.auth, 'auth')))
+        item.add(rumps.MenuItem('API URL...', lambda _: self.settings(Windows.url, 'url')))
+        item.add(rumps.MenuItem('RSA key path...', lambda _: self.settings(Windows.rsa_path, 'rsa_path')))
+        return item
+
     def render_menu(self):
         quit_button = self.menu.get('Quit')
         self.menu.clear()
 
         self.menu.add(rumps.MenuItem(self.ABOUT, lambda _: webbrowser.open(self.GITHUB_ULR)))
+        self.menu.add(self.render_settings_item())
         self.menu.add(rumps.separator)
 
         # Active jobs sorted by created time
@@ -240,6 +290,7 @@ class NeuroxApp(rumps.App):
         self.menu.add(rumps.separator)
         self.menu.add(rumps.MenuItem('Create job...', self.create_job))
         self.menu.add(self.render_presets_item())
+        self.menu.add(rumps.separator)
         self.menu.add(quit_button)
 
     @staticmethod
@@ -268,7 +319,9 @@ class NeuroxApp(rumps.App):
             self.show_updates(updates)
         except ValueError as e:
             rumps.notification('Failed to get updates', '', str(e))
-        except Exception as e:
+        except AuthenticationError:
+            rumps.notification('Failed to get updates', '', 'You may be using the wrong token')
+        except Exception:
             # Ignore Internet connection problems
             pass
 

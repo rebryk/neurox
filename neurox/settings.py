@@ -3,6 +3,10 @@ import json
 
 class Settings:
     DEFAULT_SETTINGS = {
+        'username': '',
+        'auth': '',
+        'url': 'https://platform.staging.neuromation.io/api/v1',
+        'rsa_path': '',
         'job_params': '',
         'port': '',
         'presets': []
