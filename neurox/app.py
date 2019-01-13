@@ -63,12 +63,22 @@ class NeuroxApp(rumps.App):
     def create_job(self, *args):
         try:
             with Settings(self.settings_path) as settings:
-                response = Windows.create_job(settings['job_params'])
-                settings['job_params'] = str(response.text)
+                while True:
+                    response = Windows.create_job(settings['job_params'])
+                    settings['job_params'] = str(response.text)
 
-                if response.clicked:
-                    self.client.submit_raw(settings['job_params'])
-                    self.set_active_mode()
+                    if not response.clicked:
+                        return
+
+                    response = Windows.job_description(settings['job_name'], 'Prev')
+
+                    if response.clicked:
+                        settings['job_name'] = response.text
+
+                        params = f'-d \'{response.text}\' ' + settings['job_params']
+                        self.client.submit_raw(params)
+                        self.set_active_mode()
+                        return
         except Exception as e:
             rumps.notification('Failed to create new job', '', str(e))
 

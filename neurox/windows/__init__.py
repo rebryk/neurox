@@ -25,18 +25,18 @@ class Windows:
         return Window(title='Create job',
                       message='Specify job parameters',
                       default_text=params,
-                      ok='Submit',
+                      ok='Next',
                       cancel='Cancel',
                       dimensions=(300, 100))
 
     @staticmethod
     @autorun
-    def job_description(description: str) -> Window:
+    def job_description(description: str, cancel: str = 'Cancel') -> Window:
         return Window(title='Job description',
                       message='Enter job description',
                       default_text=description,
                       ok='Submit',
-                      cancel='Cancel',
+                      cancel=cancel,
                       dimensions=(300, 23))
 
     @staticmethod

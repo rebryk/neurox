@@ -7,6 +7,7 @@ class Settings:
         'auth': '',
         'url': 'https://platform.staging.neuromation.io/api/v1',
         'rsa_path': '',
+        'job_name': 'Job',
         'job_params': '',
         'port': '',
         'presets': []
