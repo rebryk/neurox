@@ -14,6 +14,21 @@ It allows you:
 ![NeuroX screenshot](https://habrastorage.org/webt/rf/29/b3/rf29b3ytlqafneakdpidtnsdfu0.png)
 ![NeuroX screenshot](https://habrastorage.org/webt/1v/ja/xv/1vjaxvraovgbuxkeedqpo4gsvto.png)
 
+## Tutorials
+### Neuromation CLI
+- [Installation](https://github.com/rebryk/neurox/wiki/Installation)
+- [Create a Docker image](https://github.com/rebryk/neurox/wiki/Create-a-Docker-image)
+- [Running a simple job](https://github.com/rebryk/neurox/wiki/Running-a-simple-job)
+- [Storage usage](https://github.com/rebryk/neurox/wiki/Storage-usage)
+- [Attach to job using SSH](https://github.com/rebryk/neurox/wiki/Attach-to-job-using-SSH)
+- [Enable remote debugging](https://github.com/rebryk/neurox/wiki/Enable-remote-debugging)
+- [Run a job with Jupyter](https://github.com/rebryk/neurox/wiki/Run-a-job-with-Jupyter)
+
+### NeuroX
+- [Installation](https://github.com/rebryk/neurox/wiki/NeuroX-installation)
+- [Running a job](https://github.com/rebryk/neurox/wiki/Running-a-job)
+- [Using presets](https://github.com/rebryk/neurox/wiki/Using-presets)
+
 ## Installation
 Clone the repository and run `build.sh` script:
 ```bash
